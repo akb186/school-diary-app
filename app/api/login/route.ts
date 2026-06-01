@@ -1,14 +1,25 @@
 import { prisma } from "@/lib/prisma";
 
+import {
+  createSessionToken,
+  sessionCookieName,
+} from "@/lib/session";
+
+import bcrypt from "bcrypt";
+
 export async function POST(
   req: Request
 ) {
   const body = await req.json();
 
   const user =
-    await prisma.user.findFirst({
+    await prisma.user.findUnique({
       where: {
-        name: body.name,
+        loginId: body.loginId,
+      },
+
+      include: {
+        classRoom: true,
       },
     });
 
@@ -16,13 +27,49 @@ export async function POST(
     return Response.json(
       {
         error:
-          "ユーザーが存在しません",
+          "IDまたはパスワードが違います",
       },
       {
-        status: 404,
+        status: 401,
       }
     );
   }
 
-  return Response.json(user);
+  const isMatch =
+    await bcrypt.compare(
+      body.password,
+      user.password
+    );
+
+  if (!isMatch) {
+    return Response.json(
+      {
+        error:
+          "IDまたはパスワードが違います",
+      },
+      {
+        status: 401,
+      }
+    );
+  }
+
+  const {
+    password,
+    ...userWithoutPassword
+  } = user;
+
+  const sessionToken =
+    await createSessionToken({
+      userId: user.id,
+      role: user.role,
+    });
+
+  return Response.json(
+    userWithoutPassword,
+    {
+      headers: {
+        "Set-Cookie": `${sessionCookieName}=${sessionToken}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
+      },
+    }
+  );
 }

@@ -3,7 +3,10 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [name, setName] =
+  const [loginId, setLoginId] =
+    useState("");
+
+  const [password, setPassword] =
     useState("");
 
   const login = async () => {
@@ -18,14 +21,15 @@ export default function Home() {
         },
 
         body: JSON.stringify({
-          name,
+          loginId,
+          password,
         }),
       }
     );
 
     if (!res.ok) {
       alert(
-        "ユーザーが存在しません"
+        "IDまたはパスワードが違います"
       );
 
       return;
@@ -70,13 +74,27 @@ export default function Home() {
         }}
       >
         <input
-          placeholder="名前を入力"
-          value={name}
+          placeholder="ログインID"
+          value={loginId}
           onChange={(e) =>
-            setName(
+            setLoginId(
               e.target.value
             )
           }
+        />
+
+        <input
+          type="password"
+          placeholder="パスワード"
+          value={password}
+          onChange={(e) =>
+            setPassword(
+              e.target.value
+            )
+          }
+          style={{
+            marginLeft: "10px",
+          }}
         />
 
         <button
@@ -87,26 +105,6 @@ export default function Home() {
         >
           ログイン
         </button>
-      </div>
-
-      <div
-        style={{
-          marginTop: "20px",
-        }}
-      >
-        <p>
-          テストユーザー
-        </p>
-
-        <ul>
-          <li>管理者</li>
-
-          <li>
-            田中先生
-          </li>
-
-          <li>A君</li>
-        </ul>
       </div>
     </div>
   );

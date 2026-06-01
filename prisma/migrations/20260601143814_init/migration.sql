@@ -1,6 +1,8 @@
 -- CreateTable
 CREATE TABLE "User" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "loginId" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "classRoomId" INTEGER,
@@ -26,3 +28,6 @@ CREATE TABLE "Diary" (
     "stampType" TEXT,
     CONSTRAINT "Diary_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_loginId_key" ON "User"("loginId");
