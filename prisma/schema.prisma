@@ -1,6 +1,6 @@
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -8,47 +8,47 @@ generator client {
 }
 
 model User {
-  id          Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  loginId    String @unique
+  loginId String @unique
 
-  password   String
+  password String
 
-  name        String
+  name String
 
-  role        String
+  role String
 
   classRoomId Int?
   classRoom   ClassRoom? @relation(fields: [classRoomId], references: [id])
 
-  diaries     Diary[]
+  diaries Diary[]
 }
 
 model ClassRoom {
-  id       Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  name     String
+  name String
 
   students User[]
 }
 
 model Diary {
-  id                  Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  studentId           Int
-  student             User @relation(fields: [studentId], references: [id])
+  studentId Int
+  student   User @relation(fields: [studentId], references: [id])
 
-  targetDate          DateTime
+  targetDate DateTime
 
-  physicalCondition   String
+  physicalCondition String
 
-  mentalCondition     String
+  mentalCondition String
 
-  comment             String
+  comment String
 
-  submittedAt         DateTime @default(now())
+  submittedAt DateTime @default(now())
 
-  readAt              DateTime?
+  readAt DateTime?
 
-  stampType           String?
+  stampType String?
 }

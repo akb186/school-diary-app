@@ -1,33 +1,43 @@
 -- CreateTable
 CREATE TABLE "User" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "loginId" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "classRoomId" INTEGER,
-    CONSTRAINT "User_classRoomId_fkey" FOREIGN KEY ("classRoomId") REFERENCES "ClassRoom" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "ClassRoom" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "name" TEXT NOT NULL
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "ClassRoom_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Diary" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL NOT NULL,
     "studentId" INTEGER NOT NULL,
-    "targetDate" DATETIME NOT NULL,
+    "targetDate" TIMESTAMP(3) NOT NULL,
     "physicalCondition" TEXT NOT NULL,
     "mentalCondition" TEXT NOT NULL,
     "comment" TEXT NOT NULL,
-    "submittedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "readAt" DATETIME,
+    "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "readAt" TIMESTAMP(3),
     "stampType" TEXT,
-    CONSTRAINT "Diary_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+
+    CONSTRAINT "Diary_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_loginId_key" ON "User"("loginId");
+
+-- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_classRoomId_fkey" FOREIGN KEY ("classRoomId") REFERENCES "ClassRoom"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Diary" ADD CONSTRAINT "Diary_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
