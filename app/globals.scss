@@ -216,6 +216,27 @@ p {
   background: var(--danger);
 }
 
+.toast-notification {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  color: #14532d;
+  background: #dcfce7;
+  box-shadow: 0 8px 24px rgba(31, 41, 51, 0.18);
+  font-weight: 700;
+}
+
+.toast-notification.error {
+  border-color: #fca5a5;
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+
 body > div > div,
 form {
   margin-bottom: 10px;

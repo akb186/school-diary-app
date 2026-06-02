@@ -7,6 +7,11 @@ import {
   useState,
 } from "react";
 
+type Notification = {
+  message: string;
+  type: "success" | "error";
+};
+
 export default function AdminPage() {
   const [adminUser, setAdminUser] =
     useState<any>(null);
@@ -64,6 +69,44 @@ export default function AdminPage() {
     classRoomFilter,
     setClassRoomFilter,
   ] = useState("");
+
+  const [
+    notification,
+    setNotification,
+  ] = useState<Notification | null>(
+    null
+  );
+
+  const [
+    isCreatingUser,
+    setIsCreatingUser,
+  ] = useState(false);
+
+  useEffect(() => {
+    if (!notification) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        setNotification(null);
+      }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [notification]);
+
+  const showNotification = (
+    message: string,
+    type: Notification["type"] =
+      "success"
+  ) => {
+    setNotification({
+      message,
+      type,
+    });
+  };
 
   const sortUsers = (key: string) => {
     if (userSortKey === key) {
@@ -325,35 +368,61 @@ export default function AdminPage() {
   };
 
   const createUser = async () => {
-    const res = await fetch("/api/users", {
-      method: "POST",
-
-      headers: {
-        "Content-Type":
-          "application/json",
-      },
-
-      body: JSON.stringify({
-        name,
-        loginId,
-        password,
-        role,
-        classRoomId,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error);
+    if (isCreatingUser) {
       return;
     }
 
-    setName("");
-    setLoginId("");
-    setPassword("");
+    setIsCreatingUser(true);
 
-    await fetchUsers();
+    try {
+      const res = await fetch(
+        "/api/users",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            name,
+            loginId,
+            password,
+            role,
+            classRoomId,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showNotification(
+          data.error ??
+            "ユーザー作成に失敗しました",
+          "error"
+        );
+        return;
+      }
+
+      setName("");
+      setLoginId("");
+      setPassword("");
+
+      await fetchUsers();
+
+      showNotification(
+        `${data.name} を作成しました`
+      );
+    } catch {
+      showNotification(
+        "ユーザー作成に失敗しました",
+        "error"
+      );
+    } finally {
+      setIsCreatingUser(false);
+    }
   };
 
   const startEditUser = (user: any) => {
@@ -464,6 +533,16 @@ export default function AdminPage() {
 
   return (
     <div>
+      {notification && (
+        <div
+          className={`toast-notification ${notification.type}`}
+          role="status"
+          aria-live="polite"
+        >
+          {notification.message}
+        </div>
+      )}
+
       {!adminUser && (
         <p>確認中...</p>
       )}
@@ -629,8 +708,11 @@ export default function AdminPage() {
 
         <button
           onClick={createUser}
+          disabled={isCreatingUser}
         >
-          作成
+          {isCreatingUser
+            ? "作成中..."
+            : "作成"}
         </button>
       </div>
 
