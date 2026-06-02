@@ -8,6 +8,7 @@
     "build": "next build",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "seed": "npm run db:seed",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"

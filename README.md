@@ -5,17 +5,14 @@
 ```bash
 npm install
 npx prisma migrate dev --name init
+npm run db:seed
 npm run dev
 ```
 
-```削除
-rm -f prisma/dev.db   
-rm -rf prisma/migrations
-```
+## デプロイ
 
-npx prisma studio
+Vercel へのデプロイ手順は [doc/deploy.md](doc/deploy.md) を参照してください。
 
 ## URL
 
 http://localhost:3000
-# J-T-intern
