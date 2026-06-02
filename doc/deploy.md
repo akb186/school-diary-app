@@ -2,22 +2,27 @@
 
 ## Vercel デプロイ
 
-### 1. PostgreSQL を用意する
+### 1. Neon PostgreSQL を用意する
 
-Vercel の Storage か外部サービスで PostgreSQL データベースを作成します。
+Neon で Project を作成し、Connection string を2種類取得します。
 
-接続文字列は Prisma 用に `sslmode=require` を付けた形式にします。
+- `Pooled connection`: アプリ実行時に使う
+- `Direct connection`: Prisma migration に使う
 
 ```txt
-postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@POOLED_HOST/DATABASE?sslmode=require
+DIRECT_URL=postgresql://USER:PASSWORD@DIRECT_HOST/DATABASE?sslmode=require
 ```
+
+Prisma は `DATABASE_URL` を通常の接続に使い、`DIRECT_URL` を migration などの direct access に使います。
 
 ### 2. Vercel に環境変数を設定する
 
 Vercel の Project Settings > Environment Variables に以下を設定します。
 
 ```txt
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@POOLED_HOST/DATABASE?sslmode=require
+DIRECT_URL=postgresql://USER:PASSWORD@DIRECT_HOST/DATABASE?sslmode=require
 SESSION_SECRET=十分に長いランダム文字列
 ```
 
@@ -43,7 +48,7 @@ npm run db:deploy && npm run build
 npm install
 npx vercel link
 npx vercel env pull .env.production.local
-DATABASE_URL="$(grep '^DATABASE_URL=' .env.production.local | sed 's/^DATABASE_URL=//; s/^"//; s/"$//')" npm run db:seed
+npm run db:seed
 ```
 
 seed 後は以下のアカウントでログインできます。
@@ -67,7 +72,8 @@ npm install
 `.env.example` を参考に `.env` を作成します。
 
 ```txt
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+DATABASE_URL="postgresql://USER:PASSWORD@POOLED_HOST/DATABASE?sslmode=require"
+DIRECT_URL="postgresql://USER:PASSWORD@DIRECT_HOST/DATABASE?sslmode=require"
 SESSION_SECRET="replace-with-a-long-random-secret"
 ```
 
