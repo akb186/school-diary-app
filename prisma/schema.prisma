@@ -19,10 +19,17 @@ model User {
 
   role String
 
+  studentStatus String?
+
+  graduatedAt DateTime?
+
+  graduatedSchoolYear Int?
+
   classRoomId Int?
   classRoom   ClassRoom? @relation(fields: [classRoomId], references: [id])
 
   diaries Diary[]
+  classHistories ClassRoomHistory[]
 }
 
 model ClassRoom {
@@ -30,7 +37,15 @@ model ClassRoom {
 
   name String
 
+  grade Int
+
+  class String
+
   students User[]
+  histories ClassRoomHistory[]
+  diaries Diary[]
+
+  @@unique([grade, class])
 }
 
 model Diary {
@@ -38,6 +53,9 @@ model Diary {
 
   studentId Int
   student   User @relation(fields: [studentId], references: [id])
+
+  classRoomId Int?
+  classRoom   ClassRoom? @relation(fields: [classRoomId], references: [id], onDelete: SetNull)
 
   targetDate DateTime
 
@@ -52,4 +70,26 @@ model Diary {
   readAt DateTime?
 
   stampType String?
+}
+
+model ClassRoomHistory {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  classRoomId Int
+  classRoom   ClassRoom @relation(fields: [classRoomId], references: [id], onDelete: Cascade)
+
+  schoolYear Int
+
+  startedAt DateTime
+
+  endedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([classRoomId])
+  @@index([schoolYear])
 }

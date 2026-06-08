@@ -63,49 +63,39 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <h1>
-        連絡帳管理システム PoC
-      </h1>
+    <div className="login-page">
+      <main className="login-panel">
+        <h1>
+          連絡帳管理システム PoC
+        </h1>
 
-      <div
-        style={{
-          marginTop: "20px",
-        }}
-      >
-        <input
-          placeholder="ログインID"
-          value={loginId}
-          onChange={(e) =>
-            setLoginId(
-              e.target.value
-            )
-          }
-        />
+        <div className="login-form">
+          <input
+            placeholder="ログインID"
+            value={loginId}
+            onChange={(e) =>
+              setLoginId(
+                e.target.value
+              )
+            }
+          />
 
-        <input
-          type="password"
-          placeholder="パスワード"
-          value={password}
-          onChange={(e) =>
-            setPassword(
-              e.target.value
-            )
-          }
-          style={{
-            marginLeft: "10px",
-          }}
-        />
+          <input
+            type="password"
+            placeholder="パスワード"
+            value={password}
+            onChange={(e) =>
+              setPassword(
+                e.target.value
+              )
+            }
+          />
 
-        <button
-          onClick={login}
-          style={{
-            marginLeft: "10px",
-          }}
-        >
-          ログイン
-        </button>
-      </div>
+          <button onClick={login}>
+            ログイン
+          </button>
+        </div>
+      </main>
     </div>
   );
 }

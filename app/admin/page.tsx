@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   useEffect,
   useState,
@@ -12,7 +10,30 @@ type Notification = {
   type: "success" | "error";
 };
 
+const getDefaultSchoolYear = () => {
+  const date = new Date();
+
+  return date.getMonth() >= 3
+    ? date.getFullYear()
+    : date.getFullYear() - 1;
+};
+
+const formatReiwaSchoolYear = (
+  schoolYear: number
+) => {
+  const reiwaYear = schoolYear - 2018;
+  const displayYear =
+    reiwaYear === 1
+      ? "元"
+      : String(reiwaYear);
+
+  return `令和${displayYear}年度（${schoolYear}年度）`;
+};
+
 export default function AdminPage() {
+  const targetPromotionSchoolYear =
+    getDefaultSchoolYear() + 1;
+
   const [adminUser, setAdminUser] =
     useState<any>(null);
 
@@ -22,7 +43,10 @@ export default function AdminPage() {
   const [users, setUsers] =
     useState<any[]>([]);
 
-  const [className, setClassName] =
+  const [classGrade, setClassGrade] =
+    useState("");
+
+  const [classValue, setClassValue] =
     useState("");
 
   const [name, setName] =
@@ -82,6 +106,31 @@ export default function AdminPage() {
     setIsCreatingUser,
   ] = useState(false);
 
+  const [
+    promotionPreview,
+    setPromotionPreview,
+  ] = useState<any>(null);
+
+  const [
+    isLoadingPromotion,
+    setIsLoadingPromotion,
+  ] = useState(false);
+
+  const [
+    isExecutingPromotion,
+    setIsExecutingPromotion,
+  ] = useState(false);
+
+  const [
+    promotionProgress,
+    setPromotionProgress,
+  ] = useState(0);
+
+  const [
+    isPromotionOpen,
+    setIsPromotionOpen,
+  ] = useState(false);
+
   useEffect(() => {
     if (!notification) {
       return;
@@ -134,14 +183,47 @@ export default function AdminPage() {
       : "↓";
   };
 
+  const getClassRoomName = (
+    classRoom: any
+  ) => {
+    if (!classRoom) {
+      return "";
+    }
+
+    if (
+      classRoom.grade !== null &&
+      classRoom.grade !== undefined &&
+      classRoom.class
+    ) {
+      return `${classRoom.grade}-${classRoom.class}`;
+    }
+
+    return classRoom.name ?? "";
+  };
+
+  const getUserClassLabel = (
+    user: any
+  ) => {
+    if (
+      user.studentStatus ===
+      "GRADUATED"
+    ) {
+      return "卒業";
+    }
+
+    return (
+      getClassRoomName(
+        user.classRoom
+      ) || "未設定"
+    );
+  };
+
   const getUserSortValue = (
     user: any,
     key: string
   ) => {
     if (key === "classRoom") {
-      return (
-        user.classRoom?.name ?? ""
-      );
+      return getUserClassLabel(user);
     }
 
     return user[key] ?? "";
@@ -152,7 +234,7 @@ export default function AdminPage() {
       const keyword =
         userSearch.trim().toLowerCase();
       const classRoomName =
-        user.classRoom?.name ?? "";
+        getUserClassLabel(user);
       const matchesKeyword =
         !keyword ||
         [
@@ -289,7 +371,8 @@ export default function AdminPage() {
         },
 
         body: JSON.stringify({
-          name: className,
+          grade: classGrade,
+          class: classValue,
         }),
       }
     );
@@ -301,7 +384,8 @@ export default function AdminPage() {
       return;
     }
 
-    setClassName("");
+    setClassGrade("");
+    setClassValue("");
     setClassRoomId(String(data.id));
 
     await fetchClasses();
@@ -310,17 +394,18 @@ export default function AdminPage() {
   const deleteClass = async (
     classRoom: any
   ) => {
-    const assignedUserCount =
+    const studentCount =
       users.filter(
         (user) =>
           user.classRoomId ===
-          classRoom.id
+            classRoom.id &&
+          user.role === "STUDENT"
       ).length;
 
     const message =
-      assignedUserCount > 0
-        ? `${classRoom.name} を削除しますか？所属ユーザー ${assignedUserCount} 名のクラス情報は未設定になります。`
-        : `${classRoom.name} を削除しますか？`;
+      studentCount > 0
+        ? `${getClassRoomName(classRoom)} を削除しますか？所属生徒 ${studentCount} 名のクラス情報は未設定になります。`
+        : `${getClassRoomName(classRoom)} を削除しますか？`;
 
     if (!confirm(message)) {
       return;
@@ -522,6 +607,136 @@ export default function AdminPage() {
     await fetchUsers();
   };
 
+  const previewPromotion = async () => {
+    setIsLoadingPromotion(true);
+
+    try {
+      const res = await fetch(
+        "/api/users/promotions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            dryRun: true,
+            schoolYear:
+              targetPromotionSchoolYear,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showNotification(
+          data.error ??
+            "進級プレビューに失敗しました",
+          "error"
+        );
+        return;
+      }
+
+      setPromotionPreview(data);
+    } catch {
+      showNotification(
+        "進級プレビューに失敗しました",
+        "error"
+      );
+    } finally {
+      setIsLoadingPromotion(false);
+    }
+  };
+
+  const executePromotion = async () => {
+    if (
+      !promotionPreview ||
+      isExecutingPromotion
+    ) {
+      return;
+    }
+
+    const confirmed = confirm(
+      `${promotionPreview.promotedStudents} 名を進級し、${promotionPreview.graduatedStudents} 名を卒業扱いにします。過去の日報とクラス履歴は保持されます。実行しますか？`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsExecutingPromotion(true);
+    setPromotionProgress(8);
+
+    let completed = false;
+    const progressTimer =
+      window.setInterval(() => {
+        setPromotionProgress((current) =>
+          current >= 90
+            ? current
+            : current + 8
+        );
+      }, 500);
+
+    try {
+      const res = await fetch(
+        "/api/users/promotions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            dryRun: false,
+            schoolYear:
+              targetPromotionSchoolYear,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showNotification(
+          data.error ??
+            "進級処理に失敗しました",
+          "error"
+        );
+        return;
+      }
+
+      setPromotionProgress(92);
+      setPromotionPreview(data);
+
+      await fetchClasses();
+      await fetchUsers();
+
+      completed = true;
+      setPromotionProgress(100);
+
+      showNotification(
+        `進級処理を実行しました: 進級 ${data.promotedStudents} 名 / 卒業扱い ${data.graduatedStudents} 名`
+      );
+    } catch {
+      showNotification(
+        "進級処理に失敗しました",
+        "error"
+      );
+    } finally {
+      window.clearInterval(progressTimer);
+      setIsExecutingPromotion(false);
+
+      if (completed) {
+        window.setTimeout(() => {
+          setPromotionProgress(0);
+        }, 1800);
+      } else {
+        setPromotionProgress(0);
+      }
+    }
+  };
+
   const logout = async () => {
     await fetch("/api/logout", {
       method: "POST",
@@ -550,24 +765,22 @@ export default function AdminPage() {
       {adminUser && (
         <>
       <div className="page-header">
-        <Link href="/">
-          ← トップへ戻る
-        </Link>
+        <h1>管理者画面</h1>
 
-        <button
-          className="secondary-button"
-          onClick={logout}
-        >
-          ログアウト
-        </button>
-      </div>
+        <div className="page-actions">
+          <div className="account-summary">
+            <span className="account-name">
+              ログイン中: {adminUser.name}
+            </span>
+          </div>
 
-      <h1>管理者画面</h1>
-
-      <div className="summary-row">
-        <span>
-          ログイン中: {adminUser.name}
-        </span>
+          <button
+            className="secondary-button"
+            onClick={logout}
+          >
+            ログアウト
+          </button>
+        </div>
       </div>
 
       <h2>クラス管理</h2>
@@ -576,29 +789,40 @@ export default function AdminPage() {
         <thead>
           <tr>
             <th>ID</th>
-            <th>クラス名</th>
-            <th>所属人数</th>
+            <th>学年</th>
+            <th>組</th>
+            <th>クラス</th>
+            <th>生徒人数</th>
             <th>操作</th>
           </tr>
         </thead>
 
         <tbody>
           {classes.map((classRoom) => {
-            const assignedUserCount =
+            const studentCount =
               users.filter(
                 (user) =>
                   user.classRoomId ===
-                  classRoom.id
+                    classRoom.id &&
+                  user.role === "STUDENT"
               ).length;
 
             return (
               <tr key={classRoom.id}>
                 <td>{classRoom.id}</td>
 
-                <td>{classRoom.name}</td>
+                <td>{classRoom.grade}</td>
+
+                <td>{classRoom.class}</td>
 
                 <td>
-                  {assignedUserCount}
+                  {getClassRoomName(
+                    classRoom
+                  )}
+                </td>
+
+                <td>
+                  {studentCount}
                 </td>
 
                 <td>
@@ -621,10 +845,24 @@ export default function AdminPage() {
 
       <div className="form-row class-create-row">
         <input
-          placeholder="新規クラス名 例: 1-A"
-          value={className}
+          type="number"
+          min="1"
+          placeholder="学年 例: 1"
+          value={classGrade}
           onChange={(e) =>
-            setClassName(e.target.value)
+            setClassGrade(
+              e.target.value
+            )
+          }
+        />
+
+        <input
+          placeholder="組 例: A"
+          value={classValue}
+          onChange={(e) =>
+            setClassValue(
+              e.target.value
+            )
           }
         />
 
@@ -633,6 +871,156 @@ export default function AdminPage() {
         >
           作成
         </button>
+      </div>
+
+      <div className="detail-panel promotion-panel">
+        <div className="collapsible-header">
+          <div>
+            <h2>進級処理</h2>
+          </div>
+
+          <button
+            className="secondary-button"
+            type="button"
+            aria-expanded={isPromotionOpen}
+            onClick={() =>
+              setIsPromotionOpen(
+                (current) => !current
+              )
+            }
+          >
+            {isPromotionOpen
+              ? "閉じる"
+              : "開く"}
+          </button>
+        </div>
+
+        {isPromotionOpen && (
+          <div className="collapsible-content">
+            <p className="muted-text">
+              中学校設定: 1年生は2年生へ、2年生は3年生へ、3年生は卒業になります。
+            </p>
+
+            <div className="form-row">
+              <button
+                className="secondary-button"
+                onClick={previewPromotion}
+                disabled={isLoadingPromotion}
+              >
+                {isLoadingPromotion
+                  ? "確認中..."
+                  : "プレビュー"}
+              </button>
+
+              <button
+                onClick={executePromotion}
+                disabled={
+                  !promotionPreview ||
+                  promotionPreview.dryRun ===
+                    false ||
+                  isExecutingPromotion
+                }
+              >
+                {isExecutingPromotion
+                  ? "実行中..."
+                  : "進級を実行"}
+              </button>
+            </div>
+
+            {(isExecutingPromotion ||
+              promotionProgress > 0) && (
+              <div
+                className="progress-area"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="progress-header">
+                  <span>
+                    進級処理を実行中
+                  </span>
+
+                  <span>
+                    {promotionProgress}%
+                  </span>
+                </div>
+
+                <progress
+                  className="progress-meter"
+                  value={promotionProgress}
+                  max="100"
+                  aria-label="進級処理の進捗"
+                />
+              </div>
+            )}
+
+            {promotionPreview && (
+              <>
+                <p className="muted-text">
+                  対象:{" "}
+                  {
+                    promotionPreview.totalStudents
+                  }{" "}
+                  名 / 進級:{" "}
+                  {
+                    promotionPreview.promotedStudents
+                  }{" "}
+                  名 / 卒業扱い:{" "}
+                  {
+                    promotionPreview.graduatedStudents
+                  }{" "}
+                  名
+                </p>
+
+                {promotionPreview.classesToCreate
+                  ?.length > 0 && (
+                  <p className="muted-text">
+                    自動作成されるクラス:{" "}
+                    {promotionPreview.classesToCreate
+                      .map(
+                        (classRoom: any) =>
+                          classRoom.name
+                      )
+                      .join(", ")}
+                  </p>
+                )}
+
+                <table border={1}>
+                  <thead>
+                    <tr>
+                      <th>現在クラス</th>
+                      <th>進級先</th>
+                      <th>人数</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {promotionPreview.moves.map(
+                      (move: any) => (
+                        <tr
+                          key={`${move.fromClassRoomId}-${move.toClassName ?? "graduate"}`}
+                        >
+                          <td>
+                            {move.fromClassName}
+                          </td>
+
+                          <td>
+                            {move.toClassName
+                              ? `${move.toClassName}${move.willCreateClass ? "（新規作成）" : ""}`
+                              : "卒業扱い"}
+                          </td>
+
+                          <td>
+                            {move.studentCount}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <h2
@@ -701,7 +1089,9 @@ export default function AdminPage() {
               key={classRoom.id}
               value={classRoom.id}
             >
-              {classRoom.name}
+              {getClassRoomName(
+                classRoom
+              )}
             </option>
           ))}
         </select>
@@ -773,7 +1163,9 @@ export default function AdminPage() {
               key={classRoom.id}
               value={classRoom.id}
             >
-              {classRoom.name}
+              {getClassRoomName(
+                classRoom
+              )}
             </option>
           ))}
         </select>
@@ -879,7 +1271,7 @@ export default function AdminPage() {
                 <tr key={user.id}>
                   <td>{user.id}</td>
 
-                  <td>
+                  <td className="name-cell">
                     {isEditing ? (
                       <input
                         value={editName}
@@ -890,7 +1282,9 @@ export default function AdminPage() {
                         }
                       />
                     ) : (
-                      user.name
+                      <span className="name-text">
+                        {user.name}
+                      </span>
                     )}
                   </td>
 
@@ -924,16 +1318,15 @@ export default function AdminPage() {
                                 classRoom.id
                               }
                             >
-                              {
-                                classRoom.name
-                              }
+                              {getClassRoomName(
+                                classRoom
+                              )}
                             </option>
                           )
                         )}
                       </select>
                     ) : (
-                      user.classRoom?.name ??
-                      "未設定"
+                      getUserClassLabel(user)
                     )}
                   </td>
 
@@ -977,15 +1370,11 @@ export default function AdminPage() {
 
                         <button
                           className="danger-button"
-                          onClick={() =>
-                            deleteUser(user)
-                          }
-                          disabled={!canManage}
-                          style={{
-                            marginLeft:
-                              "6px",
-                          }}
-                        >
+	                          onClick={() =>
+	                            deleteUser(user)
+	                          }
+	                          disabled={!canManage}
+	                        >
                           削除
                         </button>
                       </>

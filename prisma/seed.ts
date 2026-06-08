@@ -4,10 +4,19 @@ import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
-const classNames = [
-  "1-A",
-  "1-B",
-  "1-C",
+const classRoomsSeed = [
+  {
+    grade: 1,
+    class: "A",
+  },
+  {
+    grade: 1,
+    class: "B",
+  },
+  {
+    grade: 1,
+    class: "C",
+  },
 ];
 
 const conditionValues = [
@@ -31,33 +40,109 @@ const getDateOnly = (
   return date;
 };
 
-const getClassRoom = async (
-  name: string
-) => {
+const getSchoolYear = (date = new Date()) =>
+  date.getMonth() >= 3
+    ? date.getFullYear()
+    : date.getFullYear() - 1;
+
+const getClassRoomName = ({
+  grade,
+  classValue,
+}: {
+  grade: number;
+  classValue: string;
+}) => `${grade}-${classValue}`;
+
+const getClassRoom = async ({
+  grade,
+  class: classValue,
+}: {
+  grade: number;
+  class: string;
+}) => {
   const existingClassRoom =
     await prisma.classRoom.findFirst({
       where: {
-        name,
+        grade,
+        class: classValue,
       },
     });
 
   if (existingClassRoom) {
-    return existingClassRoom;
+    return prisma.classRoom.update({
+      where: {
+        id: existingClassRoom.id,
+      },
+      data: {
+        name: getClassRoomName({
+          grade,
+          classValue,
+        }),
+      },
+    });
   }
 
   return prisma.classRoom.create({
     data: {
-      name,
+      name: getClassRoomName({
+        grade,
+        classValue,
+      }),
+      grade,
+      class: classValue,
     },
   });
 };
 
+const syncCurrentClassHistory =
+  async ({
+    userId,
+    classRoomId,
+  }: {
+    userId: number;
+    classRoomId: number;
+  }) => {
+    const existingCurrentHistory =
+      await prisma.classRoomHistory.findFirst({
+        where: {
+          userId,
+          classRoomId,
+          endedAt: null,
+        },
+      });
+
+    if (existingCurrentHistory) {
+      return;
+    }
+
+    await prisma.classRoomHistory.updateMany({
+      where: {
+        userId,
+        endedAt: null,
+      },
+      data: {
+        endedAt: new Date(),
+      },
+    });
+
+    await prisma.classRoomHistory.create({
+      data: {
+        userId,
+        classRoomId,
+        schoolYear: getSchoolYear(),
+        startedAt: new Date(),
+      },
+    });
+  };
+
 const createDiaryIfNeeded = async ({
   studentId,
+  classRoomId,
   studentNumber,
   dayOffset,
 }: {
   studentId: number;
+  classRoomId: number;
   studentNumber: number;
   dayOffset: number;
 }) => {
@@ -94,6 +179,7 @@ const createDiaryIfNeeded = async ({
     });
 
   const diaryData = {
+    classRoomId,
     targetDate,
     physicalCondition,
     mentalCondition,
@@ -143,6 +229,7 @@ async function main() {
       name: "管理者",
       password,
       role: "ADMIN",
+      studentStatus: null,
       classRoomId: null,
     },
 
@@ -159,9 +246,9 @@ async function main() {
 
   const classRooms = [];
 
-  for (const className of classNames) {
+  for (const classRoom of classRoomsSeed) {
     classRooms.push(
-      await getClassRoom(className)
+      await getClassRoom(classRoom)
     );
   }
 
@@ -175,7 +262,8 @@ async function main() {
     const teacherNumber =
       classIndex + 1;
 
-    await prisma.user.upsert({
+    const teacher =
+      await prisma.user.upsert({
       where: {
         loginId: `teacher${String(
           teacherNumber
@@ -188,6 +276,7 @@ async function main() {
         ).padStart(3, "0")}`,
         password,
         role: "TEACHER",
+        studentStatus: null,
         classRoomId: classRoom.id,
       },
 
@@ -200,8 +289,14 @@ async function main() {
         ).padStart(3, "0")}`,
         password,
         role: "TEACHER",
+        studentStatus: null,
         classRoomId: classRoom.id,
       },
+    });
+
+    await syncCurrentClassHistory({
+      userId: teacher.id,
+      classRoomId: classRoom.id,
     });
 
     for (
@@ -227,6 +322,9 @@ async function main() {
             name: `生徒${formattedStudentNumber}`,
             password,
             role: "STUDENT",
+            studentStatus: "ACTIVE",
+            graduatedAt: null,
+            graduatedSchoolYear: null,
             classRoomId: classRoom.id,
           },
 
@@ -235,6 +333,9 @@ async function main() {
             loginId: `student${formattedStudentNumber}`,
             password,
             role: "STUDENT",
+            studentStatus: "ACTIVE",
+            graduatedAt: null,
+            graduatedSchoolYear: null,
             classRoomId: classRoom.id,
           },
         });
@@ -246,10 +347,16 @@ async function main() {
       ) {
         await createDiaryIfNeeded({
           studentId: student.id,
+          classRoomId: classRoom.id,
           studentNumber,
           dayOffset,
         });
       }
+
+      await syncCurrentClassHistory({
+        userId: student.id,
+        classRoomId: classRoom.id,
+      });
     }
   }
 }

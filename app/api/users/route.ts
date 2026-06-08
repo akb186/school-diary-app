@@ -6,6 +6,51 @@ import {
 
 import bcrypt from "bcrypt";
 
+const getSchoolYear = (date = new Date()) =>
+  date.getMonth() >= 3
+    ? date.getFullYear()
+    : date.getFullYear() - 1;
+
+const closeCurrentClassHistories = ({
+  tx,
+  userId,
+  endedAt,
+}: {
+  tx: Prisma.TransactionClient;
+  userId: number;
+  endedAt: Date;
+}) =>
+  tx.classRoomHistory.updateMany({
+    where: {
+      userId,
+      endedAt: null,
+    },
+    data: {
+      endedAt,
+    },
+  });
+
+const createCurrentClassHistory = ({
+  tx,
+  userId,
+  classRoomId,
+  startedAt,
+}: {
+  tx: Prisma.TransactionClient;
+  userId: number;
+  classRoomId: number;
+  startedAt: Date;
+}) =>
+  tx.classRoomHistory.create({
+    data: {
+      userId,
+      classRoomId,
+      schoolYear:
+        getSchoolYear(startedAt),
+      startedAt,
+    },
+  });
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -33,35 +78,64 @@ export async function POST(req: Request) {
         10
       );
 
+    const classRoomId = Number(
+      body.classRoomId
+    );
+    const now = new Date();
+
     const user =
-      await prisma.user.create({
-        data: {
-          name: body.name,
+      await prisma.$transaction(
+        async (tx) => {
+          const createdUser =
+            await tx.user.create({
+              data: {
+                name: body.name,
 
-          loginId: body.loginId,
+                loginId: body.loginId,
 
-          password: hashedPassword,
+                password: hashedPassword,
 
-          role: body.role,
+                role: body.role,
 
-          classRoomId:
-            Number(body.classRoomId),
-        },
+                studentStatus:
+                  body.role === "STUDENT"
+                    ? "ACTIVE"
+                    : null,
 
-        select: {
-          id: true,
+                classRoomId,
+              },
 
-          loginId: true,
+              select: {
+                id: true,
 
-          name: true,
+                loginId: true,
 
-          role: true,
+                name: true,
 
-          classRoomId: true,
+                role: true,
 
-          classRoom: true,
-        },
-      });
+                studentStatus: true,
+
+                graduatedAt: true,
+
+                graduatedSchoolYear: true,
+
+                classRoomId: true,
+
+                classRoom: true,
+              },
+            });
+
+          await createCurrentClassHistory({
+            tx,
+            userId: createdUser.id,
+            classRoomId,
+            startedAt: now,
+          });
+
+          return createdUser;
+        }
+      );
 
     return Response.json(user);
   } catch (error) {
@@ -196,32 +270,84 @@ export async function PUT(req: Request) {
       }
     }
 
+    const now = new Date();
+    const classRoomChanged =
+      user.classRoomId !== classRoomId;
+
     const updatedUser =
-      await prisma.user.update({
-        where: {
-          id: userId,
-        },
+      await prisma.$transaction(
+        async (tx) => {
+          const result =
+            await tx.user.update({
+              where: {
+                id: userId,
+              },
 
-        data: {
-          name: body.name,
+              data: {
+                name: body.name,
 
-          classRoomId,
-        },
+                studentStatus:
+                  user.role === "STUDENT" &&
+                  classRoomId
+                    ? "ACTIVE"
+                    : user.studentStatus,
 
-        select: {
-          id: true,
+                graduatedAt:
+                  user.role === "STUDENT" &&
+                  classRoomId
+                    ? null
+                    : user.graduatedAt,
 
-          loginId: true,
+                graduatedSchoolYear:
+                  user.role === "STUDENT" &&
+                  classRoomId
+                    ? null
+                    : user.graduatedSchoolYear,
 
-          name: true,
+                classRoomId,
+              },
 
-          role: true,
+              select: {
+                id: true,
 
-          classRoomId: true,
+                loginId: true,
 
-          classRoom: true,
-        },
-      });
+                name: true,
+
+                role: true,
+
+                studentStatus: true,
+
+                graduatedAt: true,
+
+                graduatedSchoolYear: true,
+
+                classRoomId: true,
+
+                classRoom: true,
+              },
+            });
+
+          if (classRoomChanged) {
+            await closeCurrentClassHistories({
+              tx,
+              userId,
+              endedAt: now,
+            });
+
+            if (classRoomId) {
+              await createCurrentClassHistory({
+                tx,
+                userId,
+                classRoomId,
+                startedAt: now,
+              });
+            }
+          }
+
+          return result;
+        }
+      );
 
     return Response.json(updatedUser);
   } catch {
@@ -289,6 +415,12 @@ export async function DELETE(req: Request) {
     }
 
     await prisma.$transaction([
+      prisma.classRoomHistory.deleteMany({
+        where: {
+          userId,
+        },
+      }),
+
       prisma.diary.deleteMany({
         where: {
           studentId: userId,

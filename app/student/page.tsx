@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   useEffect,
   useState,
@@ -11,23 +9,23 @@ export default function StudentPage() {
   const conditionOptions = [
     {
       value: "5",
-      label: "5：非常に良好",
+      label: "5（非常に良好）",
     },
     {
       value: "4",
-      label: "4：良好",
+      label: "4（良好）",
     },
     {
       value: "3",
-      label: "3：普通",
+      label: "3（普通）",
     },
     {
       value: "2",
-      label: "2：やや低い",
+      label: "2（やや低い）",
     },
     {
       value: "1",
-      label: "1：低い",
+      label: "1（低い）",
     },
   ];
 
@@ -96,6 +94,47 @@ export default function StudentPage() {
         "0"
       ),
     ].join("-");
+  };
+
+  const getClassRoomName = (
+    classRoom: any
+  ) => {
+    if (!classRoom) {
+      return "";
+    }
+
+    if (
+      classRoom.grade !== null &&
+      classRoom.grade !== undefined &&
+      classRoom.class
+    ) {
+      return `${classRoom.grade}-${classRoom.class}`;
+    }
+
+    return classRoom.name ?? "";
+  };
+
+  const getDiaryClassRoomName = (
+    diary: any
+  ) =>
+    getClassRoomName(
+      diary?.classRoom
+    ) ||
+    getClassRoomName(
+      diary?.student?.classRoom
+    ) ||
+    "未設定";
+
+  const isFutureDiaryDate = (
+    value: string
+  ) => {
+    const target = new Date(value);
+    const today = new Date();
+
+    target.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    return target > today;
   };
 
   const fetchDiaryHistory =
@@ -214,6 +253,13 @@ export default function StudentPage() {
     setSubmitted(false);
     setSubmittedDiary(null);
 
+    if (isFutureDiaryDate(value)) {
+      alert(
+        "未来の日付の日報は作成できません"
+      );
+      return;
+    }
+
     if (user) {
       checkSubmitted(user.id, value);
     }
@@ -235,6 +281,13 @@ export default function StudentPage() {
     if (!user) return;
 
     if (submitted) return;
+
+    if (isFutureDiaryDate(targetDate)) {
+      alert(
+        "未来の日付の日報は作成できません"
+      );
+      return;
+    }
 
     const res = await fetch("/api/diary", {
       method: "POST",
@@ -293,31 +346,29 @@ export default function StudentPage() {
   return (
     <div>
       <div className="page-header">
-        <Link href="/">
-          ← トップへ戻る
-        </Link>
+        <h1>生徒画面</h1>
 
-        <button
-          className="secondary-button"
-          onClick={logout}
-        >
-          ログアウト
-        </button>
-      </div>
+        <div className="page-actions">
+          <div className="account-summary">
+            <span className="account-name">
+              ログイン中: {user?.name}
+            </span>
 
-      <h1>生徒画面</h1>
+            <span className="account-meta">
+              所属クラス:{" "}
+              {user?.classRoom?.name ??
+                user?.classRoomId ??
+                "未設定"}
+            </span>
+          </div>
 
-      <div className="summary-row">
-        <span>
-          ログイン中: {user?.name}
-        </span>
-
-        <span>
-          所属クラス:{" "}
-          {user?.classRoom?.name ??
-            user?.classRoomId ??
-            "未設定"}
-        </span>
+          <button
+            className="secondary-button"
+            onClick={logout}
+          >
+            ログアウト
+          </button>
+        </div>
       </div>
 
       <div className="detail-panel">
@@ -331,6 +382,7 @@ export default function StudentPage() {
           <input
             type="date"
             value={targetDate}
+            max={getTodayString()}
             onChange={(e) =>
               changeTargetDate(
                 e.target.value
@@ -347,6 +399,13 @@ export default function StudentPage() {
               <span className="status-badge">
                 提出済み
               </span>
+            </p>
+
+            <p>
+              作成時クラス:
+              {getDiaryClassRoomName(
+                submittedDiary
+              )}
             </p>
 
             <p>
@@ -460,6 +519,7 @@ export default function StudentPage() {
           <thead>
             <tr>
               <th>日付</th>
+              <th>作成時クラス</th>
               <th>体調</th>
               <th>メンタル</th>
               <th>コメント</th>
@@ -485,6 +545,12 @@ export default function StudentPage() {
                   }
                 >
                   <td>{diaryDate}</td>
+
+                  <td>
+                    {getDiaryClassRoomName(
+                      diary
+                    )}
+                  </td>
 
                   <td>
                     {
