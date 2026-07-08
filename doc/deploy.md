@@ -35,12 +35,23 @@ Vercel ダッシュボードで `Add New... > Project` を選び、GitHub リポ
 このリポジトリには `vercel.json` があり、Vercel の Build Command は以下になります。
 
 ```bash
-npm run db:deploy && npm run build
+npm run build
 ```
 
-そのため、デプロイ時に Prisma migration が自動適用されます。
+ビルドはDB接続に依存しない構成にしています。Prisma migration はDB接続状況に影響されやすいため、必要なタイミングで手動実行します。
 
-### 4. seed データを投入する
+### 4. Prisma migration を適用する
+
+初回デプロイ前、またはDBスキーマを変更した場合は、Vercel CLI で環境変数を取得してから migration を実行します。
+
+```bash
+npm install
+npx vercel link
+npx vercel env pull .env.production.local
+npm run db:deploy
+```
+
+### 5. seed データを投入する
 
 初回デプロイ後、本番 DB にテストデータを入れる場合は、Vercel CLI で環境変数を取得してから seed を実行します。
 
