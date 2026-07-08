@@ -348,6 +348,29 @@ export default function TeacherPage() {
     };
 
   useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+    const initialDateFilter =
+      params.get("dateFilter");
+    const initialReadStateFilter =
+      params.get("readStateFilter");
+
+    if (initialDateFilter) {
+      setDateFilter(
+        initialDateFilter
+      );
+    }
+
+    if (
+      initialReadStateFilter !== null
+    ) {
+      setReadStateFilter(
+        initialReadStateFilter
+      );
+    }
+
     const saved =
       localStorage.getItem(
         "user"

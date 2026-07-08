@@ -546,6 +546,10 @@ body > div > .form-grid {
   display: grid;
 }
 
+nextjs-portal {
+  display: none !important;
+}
+
 @media (max-width: 720px) {
   body > div {
     width: min(100% - 20px, 1120px);

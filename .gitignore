@@ -1,6 +1,32 @@
+# dependencies
 node_modules/
+
+# environment variables
 .env
-.vercel
+.env.*
+!.env.example
+
+# build / deployment outputs
+.next/
+.vercel/
+out/
+
+# local database files
 prisma/dev.db
-.next
-.env.local
+prisma/*.db
+prisma/*.db-journal
+
+# OS / editor files
+.DS_Store
+**/.DS_Store
+
+# local workspace files
+.co?ex/
+.a?ents/
+co?ex-*.json
+co?ex-*.log
+
+# local document outputs
+doc/*.p?t?
+doc/p*.md
+scripts/
