@@ -14,6 +14,12 @@ export async function GET() {
 
         role: true,
 
+        studentStatus: true,
+
+        graduatedAt: true,
+
+        graduatedSchoolYear: true,
+
         classRoomId: true,
 
         classRoom: true,

@@ -65,7 +65,8 @@ export async function PATCH(
   if (
     !teacher ||
     !targetDiary ||
-    targetDiary.student.classRoomId !==
+    (targetDiary.classRoomId ??
+      targetDiary.student.classRoomId) !==
       teacher.classRoomId
   ) {
     return Response.json(

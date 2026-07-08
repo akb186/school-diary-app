@@ -43,6 +43,32 @@ const getDateRange = (value?: string) => {
   };
 };
 
+const isFutureDate = (value: Date) => {
+  const target = new Date(value);
+  const today = new Date();
+
+  target.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return target > today;
+};
+
+const getClassRoomDiaryWhere = (
+  classRoomId: number
+) => ({
+  OR: [
+    {
+      classRoomId,
+    },
+    {
+      classRoomId: null,
+      student: {
+        classRoomId,
+      },
+    },
+  ],
+});
+
 export async function GET(req: Request) {
   const session =
     await getSessionFromRequest(req);
@@ -113,20 +139,18 @@ export async function GET(req: Request) {
 
         ...(session.role === "TEACHER"
           ? {
-              student: {
-                classRoomId:
-                  user.classRoomId ?? -1,
-              },
+              ...getClassRoomDiaryWhere(
+                user.classRoomId ?? -1
+              ),
             }
           : {}),
 
         ...(session.role === "ADMIN" &&
         classRoomId
           ? {
-              student: {
-                classRoomId:
-                  Number(classRoomId),
-              },
+              ...getClassRoomDiaryWhere(
+                Number(classRoomId)
+              ),
             }
           : {}),
 
@@ -154,6 +178,7 @@ export async function GET(req: Request) {
             classRoom: true,
           },
         },
+        classRoom: true,
       },
 
       orderBy: {
@@ -197,10 +222,33 @@ export async function POST(
   }
 
   const body = await req.json();
+  const student =
+    await prisma.user.findUnique({
+      where: {
+        id: session.userId,
+      },
+      select: {
+        classRoomId: true,
+      },
+    });
+
   const targetDate =
     typeof body.targetDate === "string"
       ? parseDate(body.targetDate)
       : new Date(body.targetDate);
+
+  if (isFutureDate(targetDate)) {
+    return Response.json(
+      {
+        error:
+          "未来の日付の日報は作成できません",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
   const dateRange = getDateRange(
     typeof body.targetDate === "string"
       ? body.targetDate
@@ -238,6 +286,9 @@ export async function POST(
         studentId:
           session.userId,
 
+        classRoomId:
+          student?.classRoomId ?? null,
+
         targetDate:
           targetDate,
 
@@ -249,6 +300,14 @@ export async function POST(
 
         comment:
           body.comment,
+      },
+      include: {
+        student: {
+          include: {
+            classRoom: true,
+          },
+        },
+        classRoom: true,
       },
     });
 

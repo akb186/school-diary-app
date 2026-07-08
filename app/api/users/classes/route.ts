@@ -2,12 +2,28 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const getClassRoomDisplayName = ({
+  grade,
+  classValue,
+}: {
+  grade: number;
+  classValue: string;
+}) => `${grade}-${classValue}`;
+
 export async function GET() {
   const classes =
     await prisma.classRoom.findMany({
-      orderBy: {
-        id: "asc",
-      },
+      orderBy: [
+        {
+          grade: "asc",
+        },
+        {
+          class: "asc",
+        },
+        {
+          id: "asc",
+        },
+      ],
     });
 
   return Response.json(classes);
@@ -15,12 +31,17 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const grade = Number(body.grade);
+  const classValue =
+    typeof body.class === "string"
+      ? body.class.trim()
+      : "";
 
-  if (!body.name) {
+  if (!grade || !classValue) {
     return Response.json(
       {
         error:
-          "クラス名を入力してください",
+          "学年と組を入力してください",
       },
       {
         status: 400,
@@ -31,16 +52,17 @@ export async function POST(req: Request) {
   const existingClass =
     await prisma.classRoom.findFirst({
       where: {
-        name: body.name,
+        grade,
+        class: classValue,
       },
     });
 
   if (existingClass) {
     return Response.json(
-      {
-        error:
-          "同じクラス名が既に存在します",
-      },
+        {
+          error:
+          "同じ学年と組のクラスが既に存在します",
+        },
       {
         status: 400,
       }
@@ -50,7 +72,12 @@ export async function POST(req: Request) {
   const classRoom =
     await prisma.classRoom.create({
       data: {
-        name: body.name,
+        name: getClassRoomDisplayName({
+          grade,
+          classValue,
+        }),
+        grade,
+        class: classValue,
       },
     });
 

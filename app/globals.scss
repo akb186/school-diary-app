@@ -40,6 +40,38 @@ body > div {
   padding: 18px 0 28px;
 }
 
+body > .login-page {
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  min-height: 100vh;
+  padding: clamp(72px, 16vh, 140px) 0 32px;
+}
+
+.login-panel {
+  width: min(420px, 100%);
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgba(31, 41, 51, 0.1);
+}
+
+.login-panel h1 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.login-form {
+  display: grid;
+  gap: 10px;
+}
+
+.login-form button {
+  margin-top: 2px;
+}
+
 a {
   color: var(--primary);
   text-decoration: none;
@@ -78,7 +110,44 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin: 6px 0 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.account-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  max-width: min(520px, 100%);
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.05);
+}
+
+.account-name {
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.account-meta {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .summary-row {
@@ -142,12 +211,15 @@ p {
 
 .user-table-area table {
   margin-top: 0;
+  overflow: visible;
 }
 
-.user-table-area th {
+.user-table-area thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 5;
+  background: #eef2f7;
+  box-shadow: 0 1px 0 var(--line);
 }
 
 .detail-panel {
@@ -161,6 +233,31 @@ p {
 .detail-panel h2,
 .detail-panel h3 {
   margin-top: 0;
+}
+
+.promotion-panel h2 {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.collapsible-header h2,
+.collapsible-header p {
+  margin: 0;
+}
+
+.collapsible-header p {
+  margin-top: 4px;
+}
+
+.collapsible-content {
+  margin-top: 12px;
 }
 
 .comment-box {
@@ -182,6 +279,46 @@ p {
 
 .muted-text {
   color: var(--muted);
+}
+
+.progress-area {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.progress-meter {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #e5eaf1;
+}
+
+.progress-meter::-webkit-progress-bar {
+  border-radius: 999px;
+  background: #e5eaf1;
+}
+
+.progress-meter::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.progress-meter::-moz-progress-bar {
+  border-radius: 999px;
+  background: var(--primary);
 }
 
 .status-badge {
@@ -214,6 +351,27 @@ p {
 
 .danger-button {
   background: var(--danger);
+}
+
+.toast-notification {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px 12px;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  color: #14532d;
+  background: #dcfce7;
+  box-shadow: 0 8px 24px rgba(31, 41, 51, 0.18);
+  font-weight: 700;
+}
+
+.toast-notification.error {
+  border-color: #fca5a5;
+  color: #7f1d1d;
+  background: #fee2e2;
 }
 
 body > div > div,
@@ -295,6 +453,15 @@ td {
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: middle;
+}
+
+.name-cell {
+  max-width: 180px;
+}
+
+.name-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 th {
@@ -379,6 +546,10 @@ body > div > .form-grid {
   display: grid;
 }
 
+nextjs-portal {
+  display: none !important;
+}
+
 @media (max-width: 720px) {
   body > div {
     width: min(100% - 20px, 1120px);
@@ -390,8 +561,13 @@ body > div > .form-grid {
   }
 
   table {
-    display: block;
-    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .user-table-area {
+    width: 100%;
+    max-width: 100%;
   }
 
   input,
@@ -399,6 +575,11 @@ body > div > .form-grid {
   textarea,
   button {
     width: 100%;
+  }
+
+  button + button {
+    margin-top: 8px;
+    margin-left: 0;
   }
 
   .page-header,
@@ -409,9 +590,24 @@ body > div > .form-grid {
     flex-direction: column;
   }
 
+  .page-header h1 {
+    text-align: center;
+  }
+
+  .page-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .account-summary {
+    justify-content: center;
+    width: 100%;
+  }
+
   .form-grid,
   .filter-row,
   .split-layout {
     grid-template-columns: 1fr;
   }
+
 }

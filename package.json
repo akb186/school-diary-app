@@ -3,9 +3,16 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "seed": "npm run db:seed",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"
   },
@@ -15,7 +22,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
-    "next": "15.3.2",
+    "next": "^15.5.9",
     "react": "^18",
     "react-dom": "^18"
   },

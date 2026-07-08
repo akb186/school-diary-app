@@ -1,6 +1,7 @@
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -8,47 +9,87 @@ generator client {
 }
 
 model User {
-  id          Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  loginId    String @unique
+  loginId String @unique
 
-  password   String
+  password String
 
-  name        String
+  name String
 
-  role        String
+  role String
+
+  studentStatus String?
+
+  graduatedAt DateTime?
+
+  graduatedSchoolYear Int?
 
   classRoomId Int?
   classRoom   ClassRoom? @relation(fields: [classRoomId], references: [id])
 
-  diaries     Diary[]
+  diaries Diary[]
+  classHistories ClassRoomHistory[]
 }
 
 model ClassRoom {
-  id       Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  name     String
+  name String
+
+  grade Int
+
+  class String
 
   students User[]
+  histories ClassRoomHistory[]
+  diaries Diary[]
+
+  @@unique([grade, class])
 }
 
 model Diary {
-  id                  Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  studentId           Int
-  student             User @relation(fields: [studentId], references: [id])
+  studentId Int
+  student   User @relation(fields: [studentId], references: [id])
 
-  targetDate          DateTime
+  classRoomId Int?
+  classRoom   ClassRoom? @relation(fields: [classRoomId], references: [id], onDelete: SetNull)
 
-  physicalCondition   String
+  targetDate DateTime
 
-  mentalCondition     String
+  physicalCondition String
 
-  comment             String
+  mentalCondition String
 
-  submittedAt         DateTime @default(now())
+  comment String
 
-  readAt              DateTime?
+  submittedAt DateTime @default(now())
 
-  stampType           String?
+  readAt DateTime?
+
+  stampType String?
+}
+
+model ClassRoomHistory {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  classRoomId Int
+  classRoom   ClassRoom @relation(fields: [classRoomId], references: [id], onDelete: Cascade)
+
+  schoolYear Int
+
+  startedAt DateTime
+
+  endedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([classRoomId])
+  @@index([schoolYear])
 }

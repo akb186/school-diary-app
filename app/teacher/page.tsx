@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   useEffect,
   useState,
@@ -11,23 +9,23 @@ export default function TeacherPage() {
   const conditionOptions = [
     {
       value: "5",
-      label: "5：非常に良好",
+      label: "5（非常に良好）",
     },
     {
       value: "4",
-      label: "4：良好",
+      label: "4（良好）",
     },
     {
       value: "3",
-      label: "3：普通",
+      label: "3（普通）",
     },
     {
       value: "2",
-      label: "2：やや低い",
+      label: "2（やや低い）",
     },
     {
       value: "1",
-      label: "1：低い",
+      label: "1（低い）",
     },
   ];
 
@@ -53,8 +51,23 @@ export default function TeacherPage() {
   const [dateFilter, setDateFilter] =
     useState("today");
 
-  const [unreadOnly, setUnreadOnly] =
-    useState(false);
+  const [diarySearch, setDiarySearch] =
+    useState("");
+
+  const [
+    readStateFilter,
+    setReadStateFilter,
+  ] = useState("unread");
+
+  const [diarySortKey, setDiarySortKey] =
+    useState("targetDate");
+
+  const [
+    diarySortOrder,
+    setDiarySortOrder,
+  ] = useState<"asc" | "desc">(
+    "desc"
+  );
 
   const [
     selectedDiaryId,
@@ -77,8 +90,119 @@ export default function TeacherPage() {
     );
   };
 
+  const formatDate = (value: string) => {
+    const date = new Date(value);
+
+    return [
+      date.getFullYear(),
+      String(
+        date.getMonth() + 1
+      ).padStart(2, "0"),
+      String(date.getDate()).padStart(
+        2,
+        "0"
+      ),
+    ].join("-");
+  };
+
+  const getConditionScore = (
+    value: string
+  ) => Number(value?.split("：")[0]) || 0;
+
+  const getClassRoomName = (
+    classRoom: any
+  ) => {
+    if (!classRoom) {
+      return "";
+    }
+
+    if (
+      classRoom.grade !== null &&
+      classRoom.grade !== undefined &&
+      classRoom.class
+    ) {
+      return `${classRoom.grade}-${classRoom.class}`;
+    }
+
+    return classRoom.name ?? "";
+  };
+
+  const getDiaryClassRoomName = (
+    diary: any
+  ) =>
+    getClassRoomName(
+      diary?.classRoom
+    ) ||
+    getClassRoomName(
+      diary?.student?.classRoom
+    ) ||
+    "未設定";
+
+  const sortDiaries = (key: string) => {
+    if (diarySortKey === key) {
+      setDiarySortOrder(
+        diarySortOrder === "asc"
+          ? "desc"
+          : "asc"
+      );
+      return;
+    }
+
+    setDiarySortKey(key);
+    setDiarySortOrder(
+      key === "targetDate"
+        ? "desc"
+        : "asc"
+    );
+  };
+
+  const getDiarySortLabel = (
+    key: string
+  ) => {
+    if (diarySortKey !== key) {
+      return "↕";
+    }
+
+    return diarySortOrder === "asc"
+      ? "↑"
+      : "↓";
+  };
+
+  const getDiarySortValue = (
+    diary: any,
+    key: string
+  ) => {
+    if (key === "targetDate") {
+      return new Date(
+        diary.targetDate
+      ).getTime();
+    }
+
+    if (key === "student") {
+      return diary.student?.name ?? "";
+    }
+
+    if (key === "physicalCondition") {
+      return getConditionScore(
+        diary.physicalCondition
+      );
+    }
+
+    if (key === "mentalCondition") {
+      return getConditionScore(
+        diary.mentalCondition
+      );
+    }
+
+    return "";
+  };
+
   const filteredDiaries =
     diaries.filter((diary) => {
+      const keyword =
+        diarySearch
+          .trim()
+          .toLowerCase();
       const today = new Date();
       const yesterday = new Date(
         today
@@ -101,34 +225,68 @@ export default function TeacherPage() {
             yesterday
           ));
 
+      const matchesKeyword =
+        !keyword ||
+        [
+          formatDate(diary.targetDate),
+          diary.student?.name,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
+
       const matchesReadState =
-        !unreadOnly || !diary.readAt;
+        !readStateFilter ||
+        (readStateFilter === "unread" &&
+          !diary.readAt) ||
+        (readStateFilter === "read" &&
+          diary.readAt);
 
       return (
-        matchesDate && matchesReadState
+        matchesKeyword &&
+        matchesDate &&
+        matchesReadState
       );
     });
 
+  const sortedDiaries = [
+    ...filteredDiaries,
+  ].sort((a, b) => {
+    const aValue = getDiarySortValue(
+      a,
+      diarySortKey
+    );
+    const bValue = getDiarySortValue(
+      b,
+      diarySortKey
+    );
+
+    if (
+      typeof aValue === "number" &&
+      typeof bValue === "number"
+    ) {
+      return diarySortOrder === "asc"
+        ? aValue - bValue
+        : bValue - aValue;
+    }
+
+    const result = String(
+      aValue
+    ).localeCompare(
+      String(bValue),
+      "ja"
+    );
+
+    return diarySortOrder === "asc"
+      ? result
+      : -result;
+  });
+
   const selectedDiary =
-    filteredDiaries.find(
+    sortedDiaries.find(
       (diary) =>
         diary.id === selectedDiaryId
-    ) ?? filteredDiaries[0];
-
-  const formatDate = (value: string) => {
-    const date = new Date(value);
-
-    return [
-      date.getFullYear(),
-      String(
-        date.getMonth() + 1
-      ).padStart(2, "0"),
-      String(date.getDate()).padStart(
-        2,
-        "0"
-      ),
-    ].join("-");
-  };
+    ) ?? sortedDiaries[0];
 
   const getDateFilterLabel = () => {
     if (dateFilter === "today") {
@@ -190,6 +348,29 @@ export default function TeacherPage() {
     };
 
   useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+    const initialDateFilter =
+      params.get("dateFilter");
+    const initialReadStateFilter =
+      params.get("readStateFilter");
+
+    if (initialDateFilter) {
+      setDateFilter(
+        initialDateFilter
+      );
+    }
+
+    if (
+      initialReadStateFilter !== null
+    ) {
+      setReadStateFilter(
+        initialReadStateFilter
+      );
+    }
+
     const saved =
       localStorage.getItem(
         "user"
@@ -269,128 +450,183 @@ export default function TeacherPage() {
   return (
     <div>
       <div className="page-header">
-        <Link href="/">
-          ← トップへ戻る
-        </Link>
+        <h1>先生画面</h1>
 
-        <button
-          className="secondary-button"
-          onClick={logout}
-        >
-          ログアウト
-        </button>
-      </div>
+        <div className="page-actions">
+          <div className="account-summary">
+            <span className="account-name">
+              ログイン中: {user?.name}
+            </span>
 
-      <h1>先生画面</h1>
+            <span className="account-meta">
+              所属クラス:{" "}
+              {user?.classRoom?.name ??
+                user?.classRoomId}
+            </span>
+          </div>
 
-      <div className="summary-row">
-        <span>
-          ログイン中: {user?.name}
-        </span>
-
-        <span>
-          担当クラス:{" "}
-          {user?.classRoom?.name ??
-            user?.classRoomId}
-        </span>
+          <button
+            className="secondary-button"
+            onClick={logout}
+          >
+            ログアウト
+          </button>
+        </div>
       </div>
 
       <h2>
         提出一覧
       </h2>
 
-      <div className="toolbar">
-        <button
-          className={
-            dateFilter === "today"
-              ? ""
-              : "secondary-button"
+      <div className="filter-row">
+        <input
+          placeholder="日付・生徒で検索"
+          value={diarySearch}
+          onChange={(e) =>
+            setDiarySearch(e.target.value)
           }
-          onClick={() =>
-            setDateFilter("today")
-          }
-          disabled={
-            dateFilter === "today"
+        />
+
+        <select
+          value={dateFilter}
+          onChange={(e) =>
+            setDateFilter(e.target.value)
           }
         >
-          今日
-        </button>
+          <option value="today">
+            今日
+          </option>
 
-        <button
-          className={
-            dateFilter ===
-            "yesterday"
-              ? ""
-              : "secondary-button"
-          }
-          onClick={() =>
-            setDateFilter("yesterday")
-          }
-          disabled={
-            dateFilter ===
-            "yesterday"
+          <option value="yesterday">
+            昨日
+          </option>
+
+          <option value="all">
+            日付すべて
+          </option>
+        </select>
+
+        <select
+          value={readStateFilter}
+          onChange={(e) =>
+            setReadStateFilter(
+              e.target.value
+            )
           }
         >
-          昨日
-        </button>
+          <option value="">
+            状態すべて
+          </option>
+
+          <option value="unread">
+            未読
+          </option>
+
+          <option value="read">
+            既読
+          </option>
+        </select>
 
         <button
-          className={
-            dateFilter === "all"
-              ? ""
-              : "secondary-button"
-          }
-          onClick={() =>
-            setDateFilter("all")
-          }
+          className="secondary-button"
+          onClick={() => {
+            setDiarySearch("");
+            setDateFilter("today");
+            setReadStateFilter("unread");
+          }}
           disabled={
-            dateFilter === "all"
+            !diarySearch &&
+            dateFilter === "today" &&
+            readStateFilter === "unread"
           }
         >
-          すべて
+          クリア
         </button>
-
-        <label>
-          <input
-            type="checkbox"
-            checked={unreadOnly}
-            onChange={(e) =>
-              setUnreadOnly(
-                e.target.checked
-              )
-            }
-          />
-          未読のみ
-        </label>
       </div>
 
       <p className="muted-text">
-        {getDateFilterLabel()}の日報:
-        {filteredDiaries.length}件
+        表示件数: {filteredDiaries.length} /{" "}
+        {diaries.length}
+        （{getDateFilterLabel()}）
       </p>
 
-      {filteredDiaries.length === 0 && (
+      {sortedDiaries.length === 0 && (
         <p>
           提出された日報はありません
         </p>
       )}
 
-      {filteredDiaries.length > 0 && (
+      {sortedDiaries.length > 0 && (
         <div className="split-layout">
           <table border={1}>
             <thead>
               <tr>
-                <th>日付</th>
-                <th>生徒</th>
-                <th>体調</th>
-                <th>メンタル</th>
+                <th>
+                  <button
+                    className="sort-button"
+                    onClick={() =>
+                      sortDiaries(
+                        "targetDate"
+                      )
+                    }
+                  >
+                    日付{" "}
+                    {getDiarySortLabel(
+                      "targetDate"
+                    )}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    className="sort-button"
+                    onClick={() =>
+                      sortDiaries("student")
+                    }
+                  >
+                    生徒{" "}
+                    {getDiarySortLabel(
+                      "student"
+                    )}
+                  </button>
+                </th>
+                <th>作成時クラス</th>
+                <th>
+                  <button
+                    className="sort-button"
+                    onClick={() =>
+                      sortDiaries(
+                        "physicalCondition"
+                      )
+                    }
+                  >
+                    体調{" "}
+                    {getDiarySortLabel(
+                      "physicalCondition"
+                    )}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    className="sort-button"
+                    onClick={() =>
+                      sortDiaries(
+                        "mentalCondition"
+                      )
+                    }
+                  >
+                    メンタル{" "}
+                    {getDiarySortLabel(
+                      "mentalCondition"
+                    )}
+                  </button>
+                </th>
                 <th>状態</th>
                 <th>操作</th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredDiaries.map(
+              {sortedDiaries.map(
                 (diary) => (
                   <tr
                     key={diary.id}
@@ -407,8 +643,16 @@ export default function TeacherPage() {
                       )}
                     </td>
 
+                    <td className="name-cell">
+                      <span className="name-text">
+                        {diary.student?.name}
+                      </span>
+                    </td>
+
                     <td>
-                      {diary.student?.name}
+                      {getDiaryClassRoomName(
+                        diary
+                      )}
                     </td>
 
                     <td>
@@ -466,10 +710,19 @@ export default function TeacherPage() {
 
               <p>
                 生徒:{" "}
-                {
-                  selectedDiary.student
-                    ?.name
-                }
+                <span className="name-text">
+                  {
+                    selectedDiary.student
+                      ?.name
+                  }
+                </span>
+              </p>
+
+              <p>
+                作成時クラス:{" "}
+                {getDiaryClassRoomName(
+                  selectedDiary
+                )}
               </p>
 
               <p>

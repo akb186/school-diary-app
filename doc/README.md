@@ -11,7 +11,9 @@
 - Next.js
 - TypeScript
 - Prisma
-- SQLite
+- PostgreSQL
+- SCSS
+- Vercel
 
 ---
 
