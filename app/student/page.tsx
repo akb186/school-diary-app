@@ -4,6 +4,11 @@ import {
   useEffect,
   useState,
 } from "react";
+import {
+  formatDiaryDate,
+  getTodayDiaryDate,
+  isFutureDiaryDate,
+} from "@/lib/diary-date";
 
 export default function StudentPage() {
   const conditionOptions = [
@@ -42,21 +47,6 @@ export default function StudentPage() {
     );
   };
 
-  const getTodayString = () => {
-    const today = new Date();
-
-    return [
-      today.getFullYear(),
-      String(
-        today.getMonth() + 1
-      ).padStart(2, "0"),
-      String(today.getDate()).padStart(
-        2,
-        "0"
-      ),
-    ].join("-");
-  };
-
   const [user, setUser] =
     useState<any>(null);
 
@@ -70,7 +60,7 @@ export default function StudentPage() {
     useState("");
 
   const [targetDate, setTargetDate] =
-    useState(getTodayString());
+    useState(getTodayDiaryDate());
 
   const [submitted, setSubmitted] =
     useState(false);
@@ -84,16 +74,7 @@ export default function StudentPage() {
   const formatDate = (value: string) => {
     const date = new Date(value);
 
-    return [
-      date.getFullYear(),
-      String(
-        date.getMonth() + 1
-      ).padStart(2, "0"),
-      String(date.getDate()).padStart(
-        2,
-        "0"
-      ),
-    ].join("-");
+    return formatDiaryDate(date);
   };
 
   const getClassRoomName = (
@@ -124,18 +105,6 @@ export default function StudentPage() {
       diary?.student?.classRoom
     ) ||
     "未設定";
-
-  const isFutureDiaryDate = (
-    value: string
-  ) => {
-    const target = new Date(value);
-    const today = new Date();
-
-    target.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    return target > today;
-  };
 
   const fetchDiaryHistory =
     async (studentId: number) => {
@@ -382,7 +351,7 @@ export default function StudentPage() {
           <input
             type="date"
             value={targetDate}
-            max={getTodayString()}
+            max={getTodayDiaryDate()}
             onChange={(e) =>
               changeTargetDate(
                 e.target.value

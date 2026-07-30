@@ -1,57 +1,15 @@
 import { prisma } from "@/lib/prisma";
+import {
+  getDiaryDateRange,
+  isFutureDiaryDate,
+  parseDiaryDate,
+} from "@/lib/diary-date";
 
 import {
   getSessionFromRequest,
 } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
-
-const parseDate = (value: string) => {
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(value)
-  ) {
-    return new Date(value);
-  }
-
-  const [year, month, day] =
-    value.split("-").map(Number);
-
-  return new Date(
-    year,
-    month - 1,
-    day
-  );
-};
-
-const getDateRange = (value?: string) => {
-  const baseDate = value
-    ? parseDate(value)
-    : new Date();
-
-  const start = new Date(
-    baseDate.getFullYear(),
-    baseDate.getMonth(),
-    baseDate.getDate()
-  );
-  const end = new Date(start);
-
-  end.setDate(end.getDate() + 1);
-
-  return {
-    start,
-    end,
-  };
-};
-
-const isFutureDate = (value: Date) => {
-  const target = new Date(value);
-  const today = new Date();
-
-  target.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  return target > today;
-};
 
 const getClassRoomDiaryWhere = (
   classRoomId: number
@@ -106,7 +64,9 @@ export async function GET(req: Request) {
 
   const dateRange =
     today === "true" || date
-      ? getDateRange(date ?? undefined)
+      ? getDiaryDateRange(
+          date ?? undefined
+        )
       : null;
 
   const user =
@@ -232,12 +192,30 @@ export async function POST(
       },
     });
 
-  const targetDate =
+  const targetDateValue =
     typeof body.targetDate === "string"
-      ? parseDate(body.targetDate)
-      : new Date(body.targetDate);
+      ? body.targetDate
+      : "";
 
-  if (isFutureDate(targetDate)) {
+  const targetDate = parseDiaryDate(
+    targetDateValue
+  );
+
+  if (!targetDate) {
+    return Response.json(
+      {
+        error:
+          "日付の形式が正しくありません",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    isFutureDiaryDate(targetDateValue)
+  ) {
     return Response.json(
       {
         error:
@@ -249,11 +227,20 @@ export async function POST(
     );
   }
 
-  const dateRange = getDateRange(
-    typeof body.targetDate === "string"
-      ? body.targetDate
-      : undefined
-  );
+  const dateRange =
+    getDiaryDateRange(targetDateValue);
+
+  if (!dateRange) {
+    return Response.json(
+      {
+        error:
+          "日付の形式が正しくありません",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
 
   const existingDiary =
     await prisma.diary.findFirst({
