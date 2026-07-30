@@ -9,56 +9,82 @@ export default function Home() {
   const [password, setPassword] =
     useState("");
 
-  const login = async () => {
-    const res = await fetch(
-      "/api/login",
-      {
-        method: "POST",
+  const [isLoading, setIsLoading] =
+    useState(false);
 
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
+  const login = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
-        body: JSON.stringify({
-          loginId,
-          password,
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      alert(
-        "IDまたはパスワードが違います"
-      );
-
+    if (isLoading) {
       return;
     }
 
-    const user =
-      await res.json();
+    setIsLoading(true);
 
-    localStorage.setItem(
-      "user",
-      JSON.stringify(user)
-    );
+    try {
+      const res = await fetch(
+        "/api/login",
+        {
+          method: "POST",
 
-    if (
-      user.role === "STUDENT"
-    ) {
-      location.href = "/student";
-    }
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-    if (
-      user.role === "TEACHER"
-    ) {
-      location.href = "/teacher";
-    }
+          body: JSON.stringify({
+            loginId,
+            password,
+          }),
+        }
+      );
 
-    if (
-      user.role === "ADMIN"
-    ) {
-      location.href = "/admin";
+      if (!res.ok) {
+        alert(
+          "IDまたはパスワードが違います"
+        );
+
+        setIsLoading(false);
+        return;
+      }
+
+      const user =
+        await res.json();
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(user)
+      );
+
+      if (
+        user.role === "STUDENT"
+      ) {
+        location.href = "/student";
+        return;
+      }
+
+      if (
+        user.role === "TEACHER"
+      ) {
+        location.href = "/teacher";
+        return;
+      }
+
+      if (
+        user.role === "ADMIN"
+      ) {
+        location.href = "/admin";
+        return;
+      }
+
+      setIsLoading(false);
+    } catch {
+      alert(
+        "ログイン処理に失敗しました。時間をおいて再度お試しください"
+      );
+      setIsLoading(false);
     }
   };
 
@@ -69,10 +95,15 @@ export default function Home() {
           連絡帳管理システム PoC
         </h1>
 
-        <div className="login-form">
+        <form
+          className="login-form"
+          onSubmit={login}
+          aria-busy={isLoading}
+        >
           <input
             placeholder="ログインID"
             value={loginId}
+            disabled={isLoading}
             onChange={(e) =>
               setLoginId(
                 e.target.value
@@ -84,6 +115,7 @@ export default function Home() {
             type="password"
             placeholder="パスワード"
             value={password}
+            disabled={isLoading}
             onChange={(e) =>
               setPassword(
                 e.target.value
@@ -91,10 +123,21 @@ export default function Home() {
             }
           />
 
-          <button onClick={login}>
-            ログイン
+          <button
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading && (
+              <span
+                className="login-spinner"
+                aria-hidden="true"
+              />
+            )}
+            {isLoading
+              ? "ログイン中…"
+              : "ログイン"}
           </button>
-        </div>
+        </form>
       </main>
     </div>
   );
