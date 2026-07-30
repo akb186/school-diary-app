@@ -247,6 +247,37 @@ p {
   box-shadow: 0 1px 0 var(--line);
 }
 
+.table-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 92px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.content-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(37, 99, 235, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: content-spinner-rotation 0.7s linear infinite;
+}
+
+@keyframes content-spinner-rotation {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-spinner {
+    animation-duration: 1.5s;
+  }
+}
+
 .detail-panel {
   padding: 12px;
   border: 1px solid var(--line);

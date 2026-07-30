@@ -43,6 +43,16 @@ export default function AdminPage() {
   const [users, setUsers] =
     useState<any[]>([]);
 
+  const [
+    isLoadingClasses,
+    setIsLoadingClasses,
+  ] = useState(true);
+
+  const [
+    isLoadingUsers,
+    setIsLoadingUsers,
+  ] = useState(true);
+
   const [classGrade, setClassGrade] =
     useState("");
 
@@ -298,37 +308,67 @@ export default function AdminPage() {
   );
 
   const fetchUsers = async () => {
-    const res = await fetch(
-      "/api/users/list",
-      {
-        cache: "no-store",
+    setIsLoadingUsers(true);
+
+    try {
+      const res = await fetch(
+        "/api/users/list",
+        {
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error();
       }
-    );
 
-    const data = await res.json();
+      const data = await res.json();
 
-    setUsers(data);
+      setUsers(data);
+    } catch {
+      showNotification(
+        "ユーザー一覧の取得に失敗しました",
+        "error"
+      );
+    } finally {
+      setIsLoadingUsers(false);
+    }
   };
 
   const fetchClasses = async () => {
-    const res = await fetch(
-      "/api/users/classes",
-      {
-        cache: "no-store",
-      }
-    );
+    setIsLoadingClasses(true);
 
-    const data = await res.json();
-
-    setClasses(data);
-
-    if (
-      data.length > 0 &&
-      !classRoomId
-    ) {
-      setClassRoomId(
-        String(data[0].id)
+    try {
+      const res = await fetch(
+        "/api/users/classes",
+        {
+          cache: "no-store",
+        }
       );
+
+      if (!res.ok) {
+        throw new Error();
+      }
+
+      const data = await res.json();
+
+      setClasses(data);
+
+      if (
+        data.length > 0 &&
+        !classRoomId
+      ) {
+        setClassRoomId(
+          String(data[0].id)
+        );
+      }
+    } catch {
+      showNotification(
+        "クラス一覧の取得に失敗しました",
+        "error"
+      );
+    } finally {
+      setIsLoadingClasses(false);
     }
   };
 
@@ -798,7 +838,28 @@ export default function AdminPage() {
         </thead>
 
         <tbody>
-          {classes.map((classRoom) => {
+          {(isLoadingClasses ||
+            isLoadingUsers) && (
+            <tr>
+              <td colSpan={6}>
+                <div
+                  className="table-loading"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span
+                    className="content-spinner"
+                    aria-hidden="true"
+                  />
+                  クラス一覧を読み込み中…
+                </div>
+              </td>
+            </tr>
+          )}
+
+          {!isLoadingClasses &&
+            !isLoadingUsers &&
+            classes.map((classRoom) => {
             const studentCount =
               users.filter(
                 (user) =>
@@ -1187,13 +1248,18 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <p className="muted-text">
-        表示件数: {sortedUsers.length} /{" "}
-        {users.length}
-      </p>
+      {!isLoadingUsers && (
+        <p className="muted-text">
+          表示件数: {sortedUsers.length} /{" "}
+          {users.length}
+        </p>
+      )}
 
       <div className="user-table-area">
-        <table border={1}>
+        <table
+          border={1}
+          aria-busy={isLoadingUsers}
+        >
           <thead>
             <tr>
               <th>
@@ -1259,7 +1325,26 @@ export default function AdminPage() {
           </thead>
 
           <tbody>
-            {sortedUsers.map((user) => {
+            {isLoadingUsers && (
+              <tr>
+                <td colSpan={6}>
+                  <div
+                    className="table-loading"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <span
+                      className="content-spinner"
+                      aria-hidden="true"
+                    />
+                    ユーザー一覧を読み込み中…
+                  </div>
+                </td>
+              </tr>
+            )}
+
+            {!isLoadingUsers &&
+              sortedUsers.map((user) => {
               const canManage =
                 user.role === "TEACHER" ||
                 user.role === "STUDENT";
