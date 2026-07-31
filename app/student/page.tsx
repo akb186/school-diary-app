@@ -65,6 +65,9 @@ export default function StudentPage() {
   const [submitted, setSubmitted] =
     useState(false);
 
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
   const [submittedDiary, setSubmittedDiary] =
     useState<any>(null);
 
@@ -249,7 +252,7 @@ export default function StudentPage() {
   const submit = async () => {
     if (!user) return;
 
-    if (submitted) return;
+    if (submitted || isSubmitting) return;
 
     if (isFutureDiaryDate(targetDate)) {
       alert(
@@ -258,49 +261,62 @@ export default function StudentPage() {
       return;
     }
 
-    const res = await fetch("/api/diary", {
-      method: "POST",
+    setIsSubmitting(true);
 
-      headers: {
-        "Content-Type":
-          "application/json",
-      },
+    try {
+      const res = await fetch(
+        "/api/diary",
+        {
+          method: "POST",
 
-      body: JSON.stringify({
-        studentId: user.id,
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
 
-        targetDate,
+          body: JSON.stringify({
+            studentId: user.id,
 
-        physicalCondition: health,
+            targetDate,
 
-        mentalCondition: mental,
+            physicalCondition: health,
 
-        comment,
-      }),
-    });
+            mentalCondition: mental,
 
-    if (!res.ok) {
-      const data =
-        await res.json();
+            comment,
+          }),
+        }
+      );
 
-      alert(data.error);
+      if (!res.ok) {
+        const data =
+          await res.json();
 
-      if (res.status === 409) {
-        setSubmitted(true);
+        alert(data.error);
+
+        if (res.status === 409) {
+          setSubmitted(true);
+        }
+
+        return;
       }
 
-      return;
+      const diary =
+        await res.json();
+
+      setSubmitted(true);
+      setSubmittedDiary(diary);
+
+      await fetchDiaryHistory(user.id);
+
+      alert("提出しました");
+    } catch {
+      alert(
+        "日報の提出に失敗しました"
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const diary =
-      await res.json();
-
-    setSubmitted(true);
-    setSubmittedDiary(diary);
-
-    await fetchDiaryHistory(user.id);
-
-    alert("提出しました");
   };
 
   const logout = async () => {
@@ -352,6 +368,7 @@ export default function StudentPage() {
             type="date"
             value={targetDate}
             max={getTodayDiaryDate()}
+            disabled={isSubmitting}
             onChange={(e) =>
               changeTargetDate(
                 e.target.value
@@ -407,6 +424,7 @@ export default function StudentPage() {
 
               <select
                 value={health}
+                disabled={isSubmitting}
                 onChange={(e) =>
                   setHealth(
                     e.target.value
@@ -431,6 +449,7 @@ export default function StudentPage() {
 
               <select
                 value={mental}
+                disabled={isSubmitting}
                 onChange={(e) =>
                   setMental(
                     e.target.value
@@ -457,6 +476,7 @@ export default function StudentPage() {
 
               <textarea
                 value={comment}
+                disabled={isSubmitting}
                 onChange={(e) =>
                   setComment(
                     e.target.value
@@ -466,10 +486,22 @@ export default function StudentPage() {
             </div>
 
             <button
+              className="submit-button"
               onClick={submit}
-              disabled={!user}
+              disabled={
+                !user || isSubmitting
+              }
+              aria-busy={isSubmitting}
             >
-              提出
+              {isSubmitting && (
+                <span
+                  className="submit-spinner"
+                  aria-hidden="true"
+                />
+              )}
+              {isSubmitting
+                ? "提出中…"
+                : "提出"}
             </button>
           </>
         )}
@@ -547,6 +579,7 @@ export default function StudentPage() {
 
                   <td>
                     <button
+                      disabled={isSubmitting}
                       onClick={() =>
                         showHistoryDiary(diary)
                       }
