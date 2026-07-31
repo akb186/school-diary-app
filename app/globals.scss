@@ -314,6 +314,13 @@ p {
   margin-top: 0;
 }
 
+.diary-detail-panel {
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+
 .promotion-panel h2 {
   padding-bottom: 0;
   border-bottom: 0;
@@ -687,6 +694,12 @@ nextjs-portal {
   .filter-row,
   .split-layout {
     grid-template-columns: 1fr;
+  }
+
+  .diary-detail-panel {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
 }

@@ -700,7 +700,7 @@ export default function TeacherPage() {
           </table>
 
           {selectedDiary && (
-            <div className="detail-panel">
+            <div className="detail-panel diary-detail-panel">
               <h3>
                 {formatDate(
                   selectedDiary.targetDate
